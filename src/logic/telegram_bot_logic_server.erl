@@ -30,11 +30,34 @@ init(Args) ->
 
 handle_cast({send_response_to_user, BotName, Update}, _) ->
     #{<<"message">> := #{<<"chat">> := #{<<"id">> := ChatId}} = Message} = Update,
+    UserStateTID = telegram_bot_logic_sup:tid(),
     ReplyMessage = case maps:get(<<"text">>, Message) of
-        <<"/donate">> -> 
-            <<"google.com">>;
+        <<"/start">> ->
+            delete_current_state(ChatId, UserStateTID),
+            <<"Welcome to Recorder Bot!\nPlease use commands to use this bot.">>;
+        <<"/recorder">> ->
+            telegram_bot_logic_record:init(Update);
+        <<"/contribute">> ->
+            delete_current_state(ChatId, UserStateTID),
+            <<"https://github.com/mossafaei/daan-recorder-bot">>;
         _ ->
-            <<"Other">>
+            CurrentState = get_current_state(ChatId, UserStateTID),
+            case CurrentState of
+                [] -> 
+                    <<"Please choose right command!">>;
+                _ ->
+                [{_, State}] = get_current_state(ChatId, UserStateTID),
+                Next_state_func = element(2, State),
+                Next_state_func(Update)
+            end
     end,
     pe4kin:send_message(BotName, #{chat_id => ChatId, text => ReplyMessage}),
     {noreply, state}.
+
+
+get_current_state(ChatId, UserStateTID) ->
+    State = ets:lookup(UserStateTID, ChatId),
+    State.
+
+delete_current_state(ChatId, UserStateTID) ->
+    ets:delete(UserStateTID, ChatId).
