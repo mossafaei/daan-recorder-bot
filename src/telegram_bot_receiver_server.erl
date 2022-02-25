@@ -21,18 +21,17 @@
 -define(SERVER, ?MODULE).
 
 start_link(Args) ->
-    gen_server:start_link({local, ?SERVER}, ?SERVER, Args, [{hibernate_after, 5000}]).
+    gen_server:start_link({local, ?SERVER}, ?SERVER, Args, []).
 
 
 init(Args) ->
-    BotName = maps:get(bot_name, Args), 
+    {ok, SupRef} = telegram_bot_logic_sup:start_link(),
+    BotName = maps:get(bot_name, Args),
     pe4kin_receiver:subscribe(BotName, self()),
     pe4kin_receiver:start_http_poll(BotName, #{limit=>100, timeout=>60}),
-    {ok, state}.
+    {ok, #{supervisor_ref => SupRef}}.
 
 
 handle_info({pe4kin_update, BotName, Upd}, State) ->
-    io:format("~p", [Upd]),
-    ChatId = maps:get(<<"id">>, maps:get(<<"chat">>, maps:get(<<"message">>, Upd))),
-    pe4kin:send_message(BotName, #{chat_id => ChatId, text => <<"Hey What's up?">>}),
-    {noreply, state}.
+    telegram_bot_logic_sup:send_message_to_worker(BotName, Upd, maps:get(supervisor_ref, State)),
+    {noreply, State}.

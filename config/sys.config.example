@@ -1,4 +1,8 @@
 [
+    {daan_recorder_bot, [
+        {num_logic_server, 25}
+    ]},
+    
     {pe4kin, [
         {bot_name, <<"daan_recorder_bot">>},
         {bot_token, <<"YOUR_BOT_TOKEN">>}
